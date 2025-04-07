@@ -2,9 +2,13 @@ package com.industriaspleneo.course.services;
 
 import com.industriaspleneo.course.entities.User;
 import com.industriaspleneo.course.repositories.UserRepository;
+import com.industriaspleneo.course.services.exceptions.DatabaseException;
 import com.industriaspleneo.course.services.exceptions.ResourceNotFoundException;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
 
 import java.lang.module.ResolutionException;
@@ -32,12 +36,23 @@ public class UserService {
     }
 
     public void delete(Long id){
-        repository.deleteById(id);
+        try{
+            if(!repository.existsById(id)) throw new ResourceNotFoundException(id);
+            repository.deleteById(id);
+        }catch (EmptyResultDataAccessException e){
+            throw new ResourceNotFoundException(id);
+        }catch (DataIntegrityViolationException e){
+            throw new DatabaseException(e.getMessage());
+        }
     }
     public User update(Long id, User obj){
-        User entity = repository.getReferenceById(id); //mais eficiente, só prepara o obj, nao faz consulta ao banco. bom pra update
-        updateData(entity, obj);
-        return repository.save(entity);
+        try {
+            User entity = repository.getReferenceById(id); //mais eficiente, só prepara o obj, nao faz consulta ao banco. bom pra update
+            updateData(entity, obj);
+            return repository.save(entity);
+        }catch (EntityNotFoundException e){
+            throw new ResourceNotFoundException(id);
+        }
     }
 
     private void updateData(User entity, User obj) {
